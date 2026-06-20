@@ -7,7 +7,11 @@ pub struct ScheduleDocument {
     #[serde(rename = "chainId")]
     pub chain_id: u64,
     pub version: u64,
-    #[serde(rename = "currentBlock", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "currentBlock",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub current_block: Option<u64>,
     pub schedule: Vec<ScheduleEntry>,
 }

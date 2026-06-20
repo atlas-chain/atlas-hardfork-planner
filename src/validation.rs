@@ -6,25 +6,49 @@ const MIN_MAX_BLOCK_GAS_LIMIT: u64 = 5000;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ValidationFailure {
     EmptySchedule,
-    FirstActivationBlockNotZero { actual: u64 },
-    NonIncreasingActivationBlocks { index: usize, previous: u64, current: u64 },
-    ElasticityMultiplierNotPositive { index: usize },
-    BaseFeeMaxChangeDenominatorNotPositive { index: usize },
-    InvalidQuantity { index: usize, field: &'static str, value: String },
-    MaxBlockGasLimitBelowMinimum { index: usize, value: u64 },
-    ChainIdMismatch { expected: u64, actual: u64 },
-    VersionRegression { offered: u64, last: u64 },
-    VersionNotIncreased { version: u64 },
+    FirstActivationBlockNotZero {
+        actual: u64,
+    },
+    NonIncreasingActivationBlocks {
+        index: usize,
+        previous: u64,
+        current: u64,
+    },
+    ElasticityMultiplierNotPositive {
+        index: usize,
+    },
+    BaseFeeMaxChangeDenominatorNotPositive {
+        index: usize,
+    },
+    InvalidQuantity {
+        index: usize,
+        field: &'static str,
+        value: String,
+    },
+    MaxBlockGasLimitBelowMinimum {
+        index: usize,
+        value: u64,
+    },
+    ChainIdMismatch {
+        expected: u64,
+        actual: u64,
+    },
+    VersionRegression {
+        offered: u64,
+        last: u64,
+    },
+    VersionNotIncreased {
+        version: u64,
+    },
 }
 
 impl std::fmt::Display for ValidationFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::EmptySchedule => write!(f, "schedule must not be empty"),
-            Self::FirstActivationBlockNotZero { actual } => write!(
-                f,
-                "schedule[0].activationBlock must be 0, got {actual}"
-            ),
+            Self::FirstActivationBlockNotZero { actual } => {
+                write!(f, "schedule[0].activationBlock must be 0, got {actual}")
+            }
             Self::NonIncreasingActivationBlocks {
                 index,
                 previous,
@@ -110,12 +134,13 @@ pub fn validate_document(
             },
         )?;
 
-        let max_block_gas_limit =
-            parse_quantity(&entry.max_block_gas_limit).ok_or(ValidationFailure::InvalidQuantity {
+        let max_block_gas_limit = parse_quantity(&entry.max_block_gas_limit).ok_or(
+            ValidationFailure::InvalidQuantity {
                 index,
                 field: "maxBlockGasLimit",
                 value: entry.max_block_gas_limit.clone(),
-            })?;
+            },
+        )?;
 
         if max_block_gas_limit < MIN_MAX_BLOCK_GAS_LIMIT {
             return Err(ValidationFailure::MaxBlockGasLimitBelowMinimum {
@@ -166,11 +191,13 @@ mod tests {
     #[test]
     fn valid_document_passes() {
         assert!(validate_document(&document(vec![entry(0)]), None).is_ok());
-        assert!(validate_document(
-            &document(vec![entry(0), entry(1_000), entry(1_000_000)]),
-            None
-        )
-        .is_ok());
+        assert!(
+            validate_document(
+                &document(vec![entry(0), entry(1_000), entry(1_000_000)]),
+                None
+            )
+            .is_ok()
+        );
     }
 
     #[test]

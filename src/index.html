@@ -35,17 +35,24 @@
       th, td { text-align: left; padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
       th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
       code { background: #050810; padding: 0.1rem 0.35rem; border-radius: 4px; }
-      form .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
       label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.2rem; }
       input { width: 100%; padding: 0.5rem; background: #0d1117; color: var(--text); border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; }
       input:focus { outline: none; border-color: var(--accent); }
       button { cursor: pointer; border: 1px solid var(--border); background: var(--accent); color: #0d1117; font-weight: 600; padding: 0.55rem 1rem; border-radius: 6px; }
       button:disabled { opacity: 0.5; cursor: not-allowed; }
       button.danger { background: transparent; color: var(--danger); border-color: var(--danger); padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+      button.secondary { background: transparent; color: var(--text); border-color: var(--border); }
       .actions { margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center; }
-      .msg { margin-top: 0.75rem; padding: 0.6rem 0.75rem; border-radius: 6px; font-size: 0.9rem; }
-      .msg.ok { background: rgba(63,185,80,0.12); border: 1px solid var(--ok); color: var(--ok); }
-      .msg.err { background: rgba(248,81,73,0.12); border: 1px solid var(--danger); color: var(--danger); }
+      .msg { position: relative; margin-top: 0.75rem; padding: 0.75rem 2.25rem 0.75rem 0.85rem; border-radius: 6px; font-size: 0.9rem; border: 1px solid; border-left-width: 4px; word-wrap: break-word; overflow-wrap: anywhere; line-height: 1.4; }
+      .msg.ok { background: rgba(63,185,80,0.12); border-color: var(--ok); color: var(--ok); }
+      .msg.err { background: rgba(248,81,73,0.15); border-color: var(--danger); color: var(--danger); }
+      .msg-title { font-weight: 700; }
+      .msg-detail { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+      .msg-detail li + li { margin-top: 0.25rem; }
+      .msg-detail code { background: rgba(0,0,0,0.35); padding: 0.05rem 0.35rem; border-radius: 3px; font-size: 0.82rem; }
+      .msg-close { position: absolute; top: 0.1rem; right: 0.25rem; background: none; border: none; color: inherit; font-size: 1.25rem; line-height: 1; padding: 0.3rem 0.5rem; opacity: 0.65; font-weight: 700; }
+      .msg-close:hover { opacity: 1; }
       .pill { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.75rem; background: rgba(88,166,255,0.15); color: var(--accent); }
       .locked { opacity: 0.6; }
       .hint { color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem; }
@@ -55,6 +62,7 @@
     <div class="wrap">
       <h1>Arkiv Hardfork Planner</h1>
       <div class="meta" id="meta">loading schedule…</div>
+      <div class="msg" id="msg" hidden></div>
 
       <h2>Planned forks</h2>
       <div class="card">
@@ -73,6 +81,17 @@
         </table>
       </div>
 
+      <h2>Admin access</h2>
+      <div class="card">
+        <div class="grid">
+          <div>
+            <label for="bearerKey">Admin bearer key</label>
+            <input id="bearerKey" name="bearerKey" type="password" placeholder="ADMIN_BEARER_KEY" autocomplete="off" />
+          </div>
+        </div>
+        <span class="hint">Stored locally in your browser and used to authorize both add and remove operations.</span>
+      </div>
+
       <h2>Plan a new fork</h2>
       <div class="card">
         <form id="forkForm">
@@ -80,6 +99,7 @@
             <div>
               <label for="activationBlock">activationBlock</label>
               <input id="activationBlock" name="activationBlock" type="number" min="1" placeholder="1000000" required />
+              <div class="hint" id="activationEstimate"></div>
             </div>
             <div>
               <label for="minBaseFeePerGas">minBaseFeePerGas</label>
@@ -97,16 +117,12 @@
               <label for="maxBlockGasLimit">maxBlockGasLimit</label>
               <input id="maxBlockGasLimit" name="maxBlockGasLimit" placeholder="30000000 or 0x.." required />
             </div>
-            <div>
-              <label for="bearerKey">Admin bearer key</label>
-              <input id="bearerKey" name="bearerKey" type="password" placeholder="ADMIN_BEARER_KEY" autocomplete="off" />
-            </div>
           </div>
           <div class="actions">
             <button type="submit" id="submitBtn">Add fork</button>
+            <button type="button" id="defaultBtn" class="secondary">Load default</button>
             <span class="hint">A new schedule version is published and persisted on every change.</span>
           </div>
-          <div class="msg" id="msg" hidden></div>
         </form>
       </div>
     </div>
@@ -114,6 +130,17 @@
     <script>
       const SCHEDULE_URL = "/arkiv-protocol-schedule.json";
       const ADMIN_URL = "/admin/forks";
+      const STORAGE_KEY = "arkiv-fork-form";
+      const SECONDS_PER_BLOCK = 2;
+      const FORM_FIELDS = [
+        "activationBlock",
+        "minBaseFeePerGas",
+        "elasticityMultiplier",
+        "baseFeeMaxChangeDenominator",
+        "maxBlockGasLimit",
+        "bearerKey",
+      ];
+      const state = { currentBlock: null, lastFork: null, headAdvancedAt: null };
       const $ = (id) => document.getElementById(id);
 
       function fmtQty(value) {
@@ -128,23 +155,102 @@
         return headers;
       }
 
+      function saveForm() {
+        const data = {};
+        FORM_FIELDS.forEach((id) => { data[id] = $(id).value; });
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
+      }
+
+      function restoreForm() {
+        let data;
+        try { data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch (_) { return; }
+        Object.entries(data).forEach(([id, val]) => {
+          const el = $(id);
+          if (el && val != null) el.value = val;
+        });
+      }
+
+      function formatIso(ms) {
+        return new Date(ms).toISOString().slice(0, 19).replace("T", " ") + " UTC";
+      }
+
+      function blockToMs(block) {
+        if (state.currentBlock == null) return null;
+        return Date.now() + (block - state.currentBlock) * SECONDS_PER_BLOCK * 1000;
+      }
+
+      function updateActivationEstimate() {
+        const el = $("activationEstimate");
+        const raw = $("activationBlock").value.trim();
+        const block = Number(raw);
+        if (!raw || !Number.isFinite(block)) { el.textContent = ""; return; }
+        const ms = blockToMs(block);
+        if (ms == null) {
+          el.textContent = "Estimate pending — waiting for current block.";
+          return;
+        }
+        const deltaMs = ms - Date.now();
+        const absSec = Math.round(Math.abs(deltaMs) / 1000);
+        let rel;
+        if (absSec < 60) rel = absSec + "s";
+        else if (absSec < 3600) rel = Math.round(absSec / 60) + " min";
+        else rel = (absSec / 3600).toFixed(1) + " h";
+        rel = deltaMs < 0 ? (rel + " ago") : ("in " + rel);
+        let text = "≈ " + formatIso(ms) + " (" + rel + ")";
+        if (deltaMs < 60_000 && block > 0) {
+          text += " — must be at least 1 min in the future";
+        }
+        el.textContent = text;
+      }
+
+      function loadDefaults() {
+        if (state.currentBlock == null) {
+          showMessage("err", "Cannot load defaults", "Current block is unknown — waiting for the node to report the chain head.");
+          return;
+        }
+        $("activationBlock").value = state.currentBlock + Math.round((10 * 60) / SECONDS_PER_BLOCK);
+        updateActivationEstimate();
+        if (state.lastFork) {
+          $("minBaseFeePerGas").value = String(state.lastFork.minBaseFeePerGas);
+          $("elasticityMultiplier").value = state.lastFork.elasticityMultiplier;
+          $("baseFeeMaxChangeDenominator").value = state.lastFork.baseFeeMaxChangeDenominator;
+          $("maxBlockGasLimit").value = String(state.lastFork.maxBlockGasLimit);
+        }
+        saveForm();
+      }
+
       async function refresh() {
         try {
           const res = await fetch(SCHEDULE_URL, { cache: "no-store" });
           if (!res.ok) throw new Error("HTTP " + res.status);
           const doc = await res.json();
 
+          state.lastFork = doc.schedule.slice()
+            .sort((a, b) => a.activationBlock - b.activationBlock)
+            .pop() || null;
+
+          const newHead = doc.currentBlock ?? null;
+          if (newHead != null && (state.currentBlock == null || newHead > state.currentBlock)) {
+            state.headAdvancedAt = Date.now();
+          }
+          state.currentBlock = newHead;
+          updateActivationEstimate();
+
+          const currentMs = blockToMs(state.currentBlock);
           $("meta").innerHTML =
             "<span><b>chainId:</b> " + doc.chainId + "</span>" +
             "<span><b>version:</b> " + doc.version + "</span>" +
-            "<span><b>currentBlock:</b> " + (doc.currentBlock == null ? "—" : doc.currentBlock) + "</span>" +
+            "<span><b>currentBlock:</b> " + (doc.currentBlock == null ? "—" :
+              doc.currentBlock + (currentMs == null ? "" : " <span class=\"hint\">(" + formatIso(currentMs) + ")</span>")) + "</span>" +
             "<span class=\"pill\">" + doc.schedule.length + " forks</span>";
 
-          const rows = doc.schedule.map((entry, index) => {
+          const rows = doc.schedule.map((entry) => {
             const baseline = entry.activationBlock === 0;
+            const estMs = baseline ? null : blockToMs(entry.activationBlock);
             return "<tr" + (baseline ? " class=\"locked\"" : "") + ">" +
               "<td><code>" + entry.activationBlock + "</code>" +
-                (baseline ? ' <span class="pill">baseline</span>' : "") + "</td>" +
+                (baseline ? ' <span class="pill">baseline</span>' : "") +
+                (estMs == null ? "" : '<div class="hint">~ ' + formatIso(estMs) + "</div>") + "</td>" +
               "<td>" + fmtQty(entry.minBaseFeePerGas) + "</td>" +
               "<td>" + entry.elasticityMultiplier + "</td>" +
               "<td>" + entry.baseFeeMaxChangeDenominator + "</td>" +
@@ -163,11 +269,63 @@
         }
       }
 
-      function showMessage(text, ok) {
+      function esc(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      }
+
+      class HttpError extends Error {
+        constructor(status, statusText, body) {
+          super("HTTP " + status + (statusText ? " " + statusText : ""));
+          this.status = status;
+          this.statusText = statusText;
+          this.body = body;
+        }
+      }
+
+      function parseServerDetail(text) {
+        if (!text) return "(empty response body)";
+        try {
+          const j = JSON.parse(text);
+          return j.error?.message || j.message || JSON.stringify(j);
+        } catch (_) {
+          return text;
+        }
+      }
+
+      let msgTimer = null;
+      function showMessage(kind, title, detail) {
         const el = $("msg");
+        if (msgTimer) { clearTimeout(msgTimer); msgTimer = null; }
+        const ok = kind === "ok";
         el.hidden = false;
-        el.textContent = text;
         el.className = "msg " + (ok ? "ok" : "err");
+        let html = '<div class="msg-title">' + esc(title) + "</div>";
+        if (detail != null) {
+          const lines = Array.isArray(detail) ? detail.filter(Boolean) : [detail];
+          if (lines.length) {
+            html += '<ul class="msg-detail">' + lines.map(l => "<li>" + esc(l) + "</li>").join("") + "</ul>";
+          }
+        }
+        html += '<button type="button" class="msg-close" aria-label="Dismiss">&times;</button>';
+        el.innerHTML = html;
+        el.querySelector(".msg-close").addEventListener("click", () => { el.hidden = true; });
+        if (ok) msgTimer = setTimeout(() => { el.hidden = true; }, 6000);
+      }
+
+      function preflightChecks(activationBlock, action) {
+        const issues = [];
+        const headAge = state.headAdvancedAt == null ? Infinity : Date.now() - state.headAdvancedAt;
+        if (headAge > 60_000) {
+          issues.push("Chain head is more than 1 minute behind — last advanced " + (state.headAdvancedAt == null ? "never" : Math.round(headAge / 1000) + "s") + " ago. Wait for the node to sync before " + action + ".");
+        }
+        const estMs = blockToMs(activationBlock);
+        if (activationBlock <= (state.currentBlock || 0)) {
+          issues.push("activationBlock " + activationBlock + " is not ahead of the current block " + (state.currentBlock ?? "?") + ".");
+        } else if (estMs == null || estMs < Date.now() + 60_000) {
+          const minBlock = (state.currentBlock || 0) + Math.ceil(60 / SECONDS_PER_BLOCK);
+          issues.push("Target fork is less than 1 minute in the future. The activation block must be >= " + minBlock + " (current block " + (state.currentBlock ?? "?") + " + 30).");
+        }
+        return issues;
       }
 
       async function addFork(event) {
@@ -180,23 +338,41 @@
           baseFeeMaxChangeDenominator: Number($("baseFeeMaxChangeDenominator").value),
           maxBlockGasLimit: $("maxBlockGasLimit").value.trim(),
         };
-        try {
-          const res = await fetch(ADMIN_URL, {
-            method: "POST",
-            headers: jsonHeaders($("bearerKey").value.trim()),
-            body: JSON.stringify(body),
-          });
+  try {
+    const issues = preflightChecks(body.activationBlock, "planning a fork");
+    if (issues.length) {
+      showMessage("err", "Cannot plan fork yet", issues);
+      return;
+    }
+    const res = await fetch(ADMIN_URL, {
+      method: "POST",
+      headers: jsonHeaders($("bearerKey").value.trim()),
+      body: JSON.stringify(body),
+    });
           const text = await res.text();
           if (!res.ok) {
-            let detail = text;
-            try { detail = JSON.parse(text).error?.message || text; } catch (_) {}
-            throw new Error(detail);
+            throw new HttpError(res.status, res.statusText, text);
           }
-          showMessage("Fork added. Schedule updated.", true);
+          let version = "?";
+          try { version = JSON.parse(text).version ?? "?"; } catch (_) {}
+          showMessage("ok", "Fork added", "Schedule updated to version " + version + ". A new schedule version has been published and persisted.");
           $("forkForm").reset();
+          updateActivationEstimate();
           await refresh();
         } catch (err) {
-          showMessage("Add failed: " + err.message, false);
+          if (err instanceof HttpError) {
+            showMessage("err", "Server rejected fork (" + err.status + " " + (err.statusText || "error") + ")", [
+              parseServerDetail(err.body),
+              "Endpoint: POST " + ADMIN_URL,
+            ]);
+          } else if (err instanceof TypeError) {
+            showMessage("err", "Network error", [
+              err.message,
+              "Could not reach " + ADMIN_URL + ". Check that the planner service is running and your network is connected.",
+            ]);
+          } else {
+            showMessage("err", "Add failed", err.message || String(err));
+          }
         } finally {
           $("submitBtn").disabled = false;
         }
@@ -204,26 +380,46 @@
 
       async function removeFork(activationBlock) {
         const bearer = $("bearerKey").value.trim();
+        const issues = preflightChecks(activationBlock, "removing a fork");
+        if (issues.length) {
+          showMessage("err", "Cannot remove fork anymore", issues);
+          return;
+        }
         if (!confirm("Remove fork at activation block " + activationBlock + "?")) return;
         try {
           const res = await fetch(ADMIN_URL + "/" + activationBlock, {
             method: "DELETE",
             headers: jsonHeaders(bearer),
           });
+          const text = await res.text();
           if (!res.ok) {
-            const text = await res.text();
-            let detail = text;
-            try { detail = JSON.parse(text).error?.message || text; } catch (_) {}
-            throw new Error(detail);
+            throw new HttpError(res.status, res.statusText, text);
           }
-          showMessage("Fork removed.", true);
+          showMessage("ok", "Fork removed", "Schedule updated. A new schedule version has been published and persisted.");
           await refresh();
         } catch (err) {
-          showMessage("Remove failed: " + err.message, false);
+          if (err instanceof HttpError) {
+            showMessage("err", "Server rejected removal (" + err.status + " " + (err.statusText || "error") + ")", [
+              parseServerDetail(err.body),
+              "Endpoint: DELETE " + ADMIN_URL + "/" + activationBlock,
+            ]);
+          } else if (err instanceof TypeError) {
+            showMessage("err", "Network error", [
+              err.message,
+              "Could not reach " + ADMIN_URL + ". Check that the planner service is running and your network is connected.",
+            ]);
+          } else {
+            showMessage("err", "Remove failed", err.message || String(err));
+          }
         }
       }
 
       $("forkForm").addEventListener("submit", addFork);
+      $("forkForm").addEventListener("input", saveForm);
+      $("activationBlock").addEventListener("input", updateActivationEstimate);
+      $("bearerKey").addEventListener("input", saveForm);
+      $("defaultBtn").addEventListener("click", loadDefaults);
+      restoreForm();
       refresh();
       setInterval(refresh, 5000);
     </script>

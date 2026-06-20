@@ -64,7 +64,11 @@ mod tests {
     use super::*;
 
     fn from_pairs<const N: usize>(pairs: [(&str, &str); N]) -> Result<Config, envy::Error> {
-        envy::from_iter(pairs.into_iter().map(|(k, v)| (k.to_string(), v.to_string())))
+        envy::from_iter(
+            pairs
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string())),
+        )
     }
 
     #[test]
