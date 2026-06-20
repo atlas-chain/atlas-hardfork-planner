@@ -1,0 +1,21 @@
+[package]
+name = "arkiv-hardfork-planner"
+version = "0.1.0"
+edition = "2024"
+description = "Hardfork planning utilities for the Arkiv Network."
+repository = "https://github.com/Arkiv-Network/arkiv-hardfork-planner"
+publish = false
+
+[dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "query", "json"] }
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "net", "io-util", "macros", "time", "sync"] }
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+envy = "0.4"
+time = { version = "0.3", default-features = false, features = ["std", "parsing", "formatting", "macros"] }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1

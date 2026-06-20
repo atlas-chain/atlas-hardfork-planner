@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Arkiv Hardfork Planner</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0d1117;
+        --card: #161b22;
+        --border: #30363d;
+        --text: #c9d1d9;
+        --muted: #8b949e;
+        --accent: #58a6ff;
+        --danger: #f85149;
+        --ok: #3fb950;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: 2rem 1rem;
+        line-height: 1.5;
+      }
+      .wrap { max-width: 980px; margin: 0 auto; }
+      h1 { margin-top: 0; }
+      h2 { margin-top: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+      .meta { color: var(--muted); display: flex; flex-wrap: wrap; gap: 1rem 2rem; }
+      .meta b { color: var(--text); }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; }
+      table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+      th, td { text-align: left; padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+      th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+      code { background: #050810; padding: 0.1rem 0.35rem; border-radius: 4px; }
+      form .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
+      label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.2rem; }
+      input { width: 100%; padding: 0.5rem; background: #0d1117; color: var(--text); border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; }
+      input:focus { outline: none; border-color: var(--accent); }
+      button { cursor: pointer; border: 1px solid var(--border); background: var(--accent); color: #0d1117; font-weight: 600; padding: 0.55rem 1rem; border-radius: 6px; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      button.danger { background: transparent; color: var(--danger); border-color: var(--danger); padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+      .actions { margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center; }
+      .msg { margin-top: 0.75rem; padding: 0.6rem 0.75rem; border-radius: 6px; font-size: 0.9rem; }
+      .msg.ok { background: rgba(63,185,80,0.12); border: 1px solid var(--ok); color: var(--ok); }
+      .msg.err { background: rgba(248,81,73,0.12); border: 1px solid var(--danger); color: var(--danger); }
+      .pill { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.75rem; background: rgba(88,166,255,0.15); color: var(--accent); }
+      .locked { opacity: 0.6; }
+      .hint { color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Arkiv Hardfork Planner</h1>
+      <div class="meta" id="meta">loading schedule…</div>
+
+      <h2>Planned forks</h2>
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Activation block</th>
+              <th>minBaseFeePerGas</th>
+              <th>elasticityMultiplier</th>
+              <th>baseFeeMaxChangeDenominator</th>
+              <th>maxBlockGasLimit</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="forks"></tbody>
+        </table>
+      </div>
+
+      <h2>Plan a new fork</h2>
+      <div class="card">
+        <form id="forkForm">
+          <div class="grid">
+            <div>
+              <label for="activationBlock">activationBlock</label>
+              <input id="activationBlock" name="activationBlock" type="number" min="1" placeholder="1000000" required />
+            </div>
+            <div>
+              <label for="minBaseFeePerGas">minBaseFeePerGas</label>
+              <input id="minBaseFeePerGas" name="minBaseFeePerGas" placeholder="440000000 or 0x.." required />
+            </div>
+            <div>
+              <label for="elasticityMultiplier">elasticityMultiplier</label>
+              <input id="elasticityMultiplier" name="elasticityMultiplier" type="number" min="1" value="2" required />
+            </div>
+            <div>
+              <label for="baseFeeMaxChangeDenominator">baseFeeMaxChangeDenominator</label>
+              <input id="baseFeeMaxChangeDenominator" name="baseFeeMaxChangeDenominator" type="number" min="1" value="8" required />
+            </div>
+            <div>
+              <label for="maxBlockGasLimit">maxBlockGasLimit</label>
+              <input id="maxBlockGasLimit" name="maxBlockGasLimit" placeholder="30000000 or 0x.." required />
+            </div>
+            <div>
+              <label for="bearerKey">Admin bearer key</label>
+              <input id="bearerKey" name="bearerKey" type="password" placeholder="ADMIN_BEARER_KEY" autocomplete="off" />
+            </div>
+          </div>
+          <div class="actions">
+            <button type="submit" id="submitBtn">Add fork</button>
+            <span class="hint">A new schedule version is published and persisted on every change.</span>
+          </div>
+          <div class="msg" id="msg" hidden></div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const SCHEDULE_URL = "/arkiv-protocol-schedule.json";
+      const ADMIN_URL = "/admin/forks";
+      const $ = (id) => document.getElementById(id);
+
+      function fmtQty(value) {
+        if (typeof value === "number") return value.toLocaleString();
+        if (typeof value === "string" && value.startsWith("0x")) return value + " (" + BigInt(value).toString() + ")";
+        return value;
+      }
+
+      function jsonHeaders(bearer) {
+        const headers = { "Content-Type": "application/json" };
+        if (bearer) headers["Authorization"] = "Bearer " + bearer;
+        return headers;
+      }
+
+      async function refresh() {
+        try {
+          const res = await fetch(SCHEDULE_URL, { cache: "no-store" });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const doc = await res.json();
+
+          $("meta").innerHTML =
+            "<span><b>chainId:</b> " + doc.chainId + "</span>" +
+            "<span><b>version:</b> " + doc.version + "</span>" +
+            "<span><b>currentBlock:</b> " + (doc.currentBlock == null ? "—" : doc.currentBlock) + "</span>" +
+            "<span class=\"pill\">" + doc.schedule.length + " forks</span>";
+
+          const rows = doc.schedule.map((entry, index) => {
+            const baseline = entry.activationBlock === 0;
+            return "<tr" + (baseline ? " class=\"locked\"" : "") + ">" +
+              "<td><code>" + entry.activationBlock + "</code>" +
+                (baseline ? ' <span class="pill">baseline</span>' : "") + "</td>" +
+              "<td>" + fmtQty(entry.minBaseFeePerGas) + "</td>" +
+              "<td>" + entry.elasticityMultiplier + "</td>" +
+              "<td>" + entry.baseFeeMaxChangeDenominator + "</td>" +
+              "<td>" + fmtQty(entry.maxBlockGasLimit) + "</td>" +
+              "<td>" + (baseline ? "" :
+                '<button class="danger" data-block="' + entry.activationBlock + '">remove</button>') + "</td>" +
+              "</tr>";
+          }).join("");
+          $("forks").innerHTML = rows;
+
+          document.querySelectorAll("#forks button.danger").forEach((btn) => {
+            btn.addEventListener("click", () => removeFork(btn.dataset.block));
+          });
+        } catch (err) {
+          $("meta").textContent = "failed to load schedule: " + err.message;
+        }
+      }
+
+      function showMessage(text, ok) {
+        const el = $("msg");
+        el.hidden = false;
+        el.textContent = text;
+        el.className = "msg " + (ok ? "ok" : "err");
+      }
+
+      async function addFork(event) {
+        event.preventDefault();
+        $("submitBtn").disabled = true;
+        const body = {
+          activationBlock: Number($("activationBlock").value),
+          minBaseFeePerGas: $("minBaseFeePerGas").value.trim(),
+          elasticityMultiplier: Number($("elasticityMultiplier").value),
+          baseFeeMaxChangeDenominator: Number($("baseFeeMaxChangeDenominator").value),
+          maxBlockGasLimit: $("maxBlockGasLimit").value.trim(),
+        };
+        try {
+          const res = await fetch(ADMIN_URL, {
+            method: "POST",
+            headers: jsonHeaders($("bearerKey").value.trim()),
+            body: JSON.stringify(body),
+          });
+          const text = await res.text();
+          if (!res.ok) {
+            let detail = text;
+            try { detail = JSON.parse(text).error?.message || text; } catch (_) {}
+            throw new Error(detail);
+          }
+          showMessage("Fork added. Schedule updated.", true);
+          $("forkForm").reset();
+          await refresh();
+        } catch (err) {
+          showMessage("Add failed: " + err.message, false);
+        } finally {
+          $("submitBtn").disabled = false;
+        }
+      }
+
+      async function removeFork(activationBlock) {
+        const bearer = $("bearerKey").value.trim();
+        if (!confirm("Remove fork at activation block " + activationBlock + "?")) return;
+        try {
+          const res = await fetch(ADMIN_URL + "/" + activationBlock, {
+            method: "DELETE",
+            headers: jsonHeaders(bearer),
+          });
+          if (!res.ok) {
+            const text = await res.text();
+            let detail = text;
+            try { detail = JSON.parse(text).error?.message || text; } catch (_) {}
+            throw new Error(detail);
+          }
+          showMessage("Fork removed.", true);
+          await refresh();
+        } catch (err) {
+          showMessage("Remove failed: " + err.message, false);
+        }
+      }
+
+      $("forkForm").addEventListener("submit", addFork);
+      refresh();
+      setInterval(refresh, 5000);
+    </script>
+  </body>
+</html>

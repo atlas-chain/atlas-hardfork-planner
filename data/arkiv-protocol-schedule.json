@@ -1,0 +1,13 @@
+{
+  "chainId": 42069,
+  "version": 1,
+  "schedule": [
+    {
+      "activationBlock": 0,
+      "minBaseFeePerGas": "440000000",
+      "elasticityMultiplier": 2,
+      "baseFeeMaxChangeDenominator": 8,
+      "maxBlockGasLimit": "30000000"
+    }
+  ]
+}

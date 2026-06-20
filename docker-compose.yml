@@ -1,0 +1,21 @@
+services:
+  protocol-schedule:
+    build: .
+    image: arkiv-hardfork-planner
+    container_name: arkiv-hardfork-planner
+    ports:
+      - "28882:28882"
+    environment:
+      LISTEN_HOST: "0.0.0.0"
+      LISTEN_PORT: "28882"
+      SCHEDULE_PATH: /data/arkiv-protocol-schedule.json
+      CHAIN_ID: "42069"
+      # Uncomment to observe the chain head and gate future entries by currentBlock:
+      # RPC_URL: http://execution-node:8545
+      # RPC_POLL_SECONDS: "10"
+      # RPC_TIMEOUT_MS: "5000"
+      # Protect the admin (fork planning) API. Leave unset to disable writes:
+      ADMIN_BEARER_KEY: ${ADMIN_BEARER_KEY:-}
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
