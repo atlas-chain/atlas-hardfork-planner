@@ -46,7 +46,7 @@ jobs:
 
     env:
       REGISTRY: ghcr.io
-      IMAGE_NAME: arkiv-network/arkiv-hardfork-planner
+      IMAGE_NAME: atlas-chain/atlas-hardfork-planner
 
     steps:
       - name: Checkout
@@ -104,10 +104,10 @@ jobs:
         id: package
         run: |
           tag="${GITHUB_REF_NAME}"
-          name="arkiv-hardfork-planner-${tag}-linux-amd64"
+          name="atlas-hardfork-planner-${tag}-linux-amd64"
           mkdir -p dist
-          cp target/x86_64-unknown-linux-musl/release/arkiv-hardfork-planner dist/
-          tar -C dist -cJf "${name}.tar.xz" arkiv-hardfork-planner
+          cp target/x86_64-unknown-linux-musl/release/atlas-hardfork-planner dist/
+          tar -C dist -cJf "${name}.tar.xz" atlas-hardfork-planner
           sha256sum "${name}.tar.xz" > "${name}.tar.xz.sha256"
           echo "archive=${name}.tar.xz" >> "$GITHUB_OUTPUT"
           echo "checksum=${name}.tar.xz.sha256" >> "$GITHUB_OUTPUT"
