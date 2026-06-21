@@ -37,21 +37,21 @@ pub async fn run_server(state: AppState, listen_host: String, listen_port: u16) 
     println!(
         "{}",
         json!({
-            "message": "arkiv protocol schedule service listening",
-            "url": format!("http://{bind_address}/arkiv-protocol-schedule.json"),
+            "message": "atlas protocol schedule service listening",
+            "url": format!("http://{bind_address}/atlas-protocol-schedule.json"),
             "ui": format!("http://{bind_address}/"),
             "chainId": snapshot.chain_id,
             "version": snapshot.version,
             "currentBlock": snapshot.current_block,
             "admin": state.admin_key.is_some(),
-            "endpoints": ["/", "/status", "/arkiv-protocol-schedule.json", "/healthz", "/admin/forks"],
+            "endpoints": ["/", "/status", "/atlas-protocol-schedule.json", "/healthz", "/admin/forks"],
         })
     );
 
     let app = Router::new()
         .route("/", get(index_handler))
         .route("/status", get(status_handler))
-        .route("/arkiv-protocol-schedule.json", get(schedule_handler))
+        .route("/atlas-protocol-schedule.json", get(schedule_handler))
         .route("/healthz", get(health_handler))
         .route("/admin/forks", post(admin_add_fork))
         .route("/admin/forks/{activation_block}", delete(admin_remove_fork))
@@ -83,7 +83,7 @@ async fn schedule_handler(State(state): State<AppState>) -> Response {
         "{}",
         json!({
             "message": "served schedule",
-            "path": "/arkiv-protocol-schedule.json",
+            "path": "/atlas-protocol-schedule.json",
             "status": 200,
             "chainId": snapshot.chain_id,
             "version": snapshot.version,
@@ -140,7 +140,7 @@ async fn status_handler(State(state): State<AppState>) -> Json<Value> {
 
     Json(json!({
         "ok": true,
-        "service": "arkiv-protocol-schedule",
+        "service": "atlas-protocol-schedule",
         "chainId": snapshot.chain_id,
         "version": snapshot.version,
         "currentBlock": snapshot.current_block,
@@ -149,7 +149,7 @@ async fn status_handler(State(state): State<AppState>) -> Json<Value> {
         "hash": snapshot.hash,
         "admin": state.admin_key.is_some(),
         "releases": releases,
-        "endpoints": ["/", "/status", "/arkiv-protocol-schedule.json", "/healthz", "/admin/forks"],
+        "endpoints": ["/", "/status", "/atlas-protocol-schedule.json", "/healthz", "/admin/forks"],
     }))
 }
 
@@ -356,8 +356,8 @@ mod tests {
     fn state_with_key(key: Option<&str>) -> AppState {
         AppState {
             store: Arc::new(ScheduleStore::new(sample_document(), None).expect("valid document")),
-            schedule_path: Arc::new("/tmp/unused-arkiv-schedule.json".to_string()),
-            html_title: Arc::new("Arkiv Hardfork Planner".to_string()),
+            schedule_path: Arc::new("/tmp/unused-atlas-schedule.json".to_string()),
+            html_title: Arc::new("Atlas Hardfork Planner".to_string()),
             admin_key: key.map(|k| Arc::new(k.to_string())),
         }
     }
@@ -396,7 +396,7 @@ mod tests {
             headers.get("content-type").unwrap(),
             "text/html; charset=utf-8"
         );
-        assert!(body.contains("Arkiv Hardfork Planner"));
+        assert!(body.contains("Atlas Hardfork Planner"));
     }
 
     #[tokio::test]
@@ -452,13 +452,13 @@ mod tests {
 
     #[tokio::test]
     async fn admin_add_fork_persists_and_returns_document() {
-        let temp = std::env::temp_dir().join("arkiv-admin-add-test.json");
+        let temp = std::env::temp_dir().join("atlas-admin-add-test.json");
         std::fs::write(&temp, "previous").unwrap();
         let document = sample_document();
         let state = AppState {
             store: Arc::new(ScheduleStore::new(document, None).expect("valid")),
             schedule_path: Arc::new(temp.to_string_lossy().to_string()),
-            html_title: Arc::new("Arkiv Hardfork Planner".to_string()),
+            html_title: Arc::new("Atlas Hardfork Planner".to_string()),
             admin_key: Some(Arc::new("real-key".to_string())),
         };
         let mut headers = HeaderMap::new();

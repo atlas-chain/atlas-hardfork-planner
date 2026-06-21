@@ -5,8 +5,8 @@ use serde::Deserialize;
 const DEFAULT_LISTEN_HOST: &str = "0.0.0.0";
 const DEFAULT_LISTEN_PORT: NonZeroU16 = NonZeroU16::new(28882).unwrap();
 const DEFAULT_WEB_WORKERS: NonZeroUsize = NonZeroUsize::new(4).unwrap();
-const DEFAULT_SCHEDULE_PATH: &str = "arkiv-protocol-schedule.json";
-const DEFAULT_HTML_TITLE: &str = "Arkiv Hardfork Planner";
+const DEFAULT_SCHEDULE_PATH: &str = "atlas-protocol-schedule.json";
+const DEFAULT_HTML_TITLE: &str = "Atlas Hardfork Planner";
 const DEFAULT_RPC_POLL_SECONDS: NonZeroU64 = NonZeroU64::new(10).unwrap();
 const DEFAULT_RPC_TIMEOUT_MS: NonZeroU64 = NonZeroU64::new(5000).unwrap();
 
@@ -96,16 +96,16 @@ mod tests {
     #[test]
     fn parses_valid_overrides() {
         let config = from_pairs([
-            ("SCHEDULE_PATH", "/etc/arkiv/schedule.json"),
-            ("HTML_TITLE", "Arkiv Fork Planner"),
+            ("SCHEDULE_PATH", "/etc/atlas/schedule.json"),
+            ("HTML_TITLE", "Atlas Fork Planner"),
             ("CHAIN_ID", "42069"),
             ("RPC_URL", "http://localhost:8545"),
             ("RPC_POLL_SECONDS", "5"),
             ("ADMIN_BEARER_KEY", "s3cret"),
         ])
         .unwrap();
-        assert_eq!(config.schedule_path, "/etc/arkiv/schedule.json");
-        assert_eq!(config.html_title, "Arkiv Fork Planner");
+        assert_eq!(config.schedule_path, "/etc/atlas/schedule.json");
+        assert_eq!(config.html_title, "Atlas Fork Planner");
         assert_eq!(config.chain_id, Some(42069));
         assert_eq!(config.rpc_url.as_deref(), Some("http://localhost:8545"));
         assert_eq!(config.rpc_poll_seconds.get(), 5);

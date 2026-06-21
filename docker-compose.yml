@@ -1,15 +1,15 @@
 services:
   protocol-schedule:
     build: .
-    image: arkiv-hardfork-planner
-    container_name: arkiv-hardfork-planner
+    image: atlas-hardfork-planner
+    container_name: atlas-hardfork-planner
     ports:
       - "28882:28882"
     environment:
       LISTEN_HOST: "0.0.0.0"
       LISTEN_PORT: "28882"
-      HTML_TITLE: ${HTML_TITLE:-Arkiv Hardfork Planner}
-      SCHEDULE_PATH: /data/arkiv-protocol-schedule.json
+      HTML_TITLE: ${HTML_TITLE:-Atlas Hardfork Planner}
+      SCHEDULE_PATH: /data/atlas-protocol-schedule.json
       CHAIN_ID: "42069"
       # Uncomment to observe the chain head and gate future entries by currentBlock:
       # RPC_URL: http://execution-node:8545

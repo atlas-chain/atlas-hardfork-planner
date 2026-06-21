@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "arkiv-hardfork-planner"
+name = "atlas-hardfork-planner"
 version = "0.1.1"
 dependencies = [
  "axum",

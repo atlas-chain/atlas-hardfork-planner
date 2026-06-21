@@ -239,7 +239,7 @@ where
         }
 
         return StartupAction::Error(format!(
-            "unsupported command-line argument: {}. Use environment variables to configure arkiv-hardfork-planner; command-line arguments are not supported.",
+            "unsupported command-line argument: {}. Use environment variables to configure atlas-hardfork-planner; command-line arguments are not supported.",
             arg.to_string_lossy()
         ));
     }

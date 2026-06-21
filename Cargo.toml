@@ -1,9 +1,9 @@
 [package]
-name = "arkiv-hardfork-planner"
+name = "atlas-hardfork-planner"
 version = "0.1.1"
 edition = "2024"
-description = "Hardfork planning utilities for the Arkiv Network."
-repository = "https://github.com/Arkiv-Network/arkiv-hardfork-planner"
+description = "Hardfork planning utilities for the Atlas Network."
+repository = "https://github.com/atlas-chain/atlas-hardfork-planner"
 publish = false
 
 [dependencies]
