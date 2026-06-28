@@ -44,9 +44,9 @@ pub struct PayloadProviderPayment {
 impl Default for PayloadProviderPayment {
     fn default() -> Self {
         Self {
-            enabled: false,
-            provider_share_bps: 0,
-            minimum_payment: "0".to_string(),
+            enabled: true,
+            provider_share_bps: 7000,
+            minimum_payment: "1".to_string(),
         }
     }
 }

@@ -9,9 +9,9 @@
       "baseFeeMaxChangeDenominator": 8,
       "maxBlockGasLimit": "30000000",
       "payloadProviderPayment": {
-        "enabled": false,
-        "providerShareBps": 0,
-        "minimumPayment": "0"
+        "enabled": true,
+        "providerShareBps": 7000,
+        "minimumPayment": "1"
       }
     }
   ]

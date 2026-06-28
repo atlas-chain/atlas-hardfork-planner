@@ -1,6 +1,6 @@
 [package]
 name = "atlas-hardfork-planner"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 description = "Hardfork planning utilities for the Atlas Network."
 repository = "https://github.com/atlas-chain/atlas-hardfork-planner"
