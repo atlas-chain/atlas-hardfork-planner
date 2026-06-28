@@ -28,6 +28,27 @@ pub struct ScheduleEntry {
     pub base_fee_max_change_denominator: u64,
     #[serde(rename = "maxBlockGasLimit")]
     pub max_block_gas_limit: String,
+    #[serde(rename = "payloadProviderPayment")]
+    pub payload_provider_payment: PayloadProviderPayment,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PayloadProviderPayment {
+    pub enabled: bool,
+    #[serde(rename = "providerShareBps")]
+    pub provider_share_bps: u16,
+    #[serde(rename = "minimumPayment")]
+    pub minimum_payment: String,
+}
+
+impl Default for PayloadProviderPayment {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            provider_share_bps: 0,
+            minimum_payment: "0".to_string(),
+        }
+    }
 }
 
 pub fn canonicalize(doc: &ScheduleDocument) -> String {
@@ -74,6 +95,7 @@ mod tests {
             elasticity_multiplier: 2,
             base_fee_max_change_denominator: 8,
             max_block_gas_limit: "30000000".to_string(),
+            payload_provider_payment: PayloadProviderPayment::default(),
         }
     }
 

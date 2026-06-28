@@ -110,6 +110,7 @@ mod tests {
             elasticity_multiplier: 2,
             base_fee_max_change_denominator: 8,
             max_block_gas_limit: "30000000".to_string(),
+            payload_provider_payment: Default::default(),
         }
     }
 

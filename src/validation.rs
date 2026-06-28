@@ -2,6 +2,7 @@ use crate::model::ScheduleDocument;
 use crate::quantity::parse_quantity;
 
 const MIN_MAX_BLOCK_GAS_LIMIT: u64 = 5000;
+const BPS_DENOMINATOR: u16 = 10_000;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ValidationFailure {
@@ -28,6 +29,13 @@ pub enum ValidationFailure {
     MaxBlockGasLimitBelowMinimum {
         index: usize,
         value: u64,
+    },
+    PayloadProviderShareBpsTooHigh {
+        index: usize,
+        value: u16,
+    },
+    PayloadProviderMinimumPaymentNotPositive {
+        index: usize,
     },
     ChainIdMismatch {
         expected: u64,
@@ -76,6 +84,14 @@ impl std::fmt::Display for ValidationFailure {
             Self::MaxBlockGasLimitBelowMinimum { index, value } => write!(
                 f,
                 "schedule[{index}].maxBlockGasLimit ({value}) must be at least {MIN_MAX_BLOCK_GAS_LIMIT}"
+            ),
+            Self::PayloadProviderShareBpsTooHigh { index, value } => write!(
+                f,
+                "schedule[{index}].payloadProviderPayment.providerShareBps ({value}) must be <= {BPS_DENOMINATOR}"
+            ),
+            Self::PayloadProviderMinimumPaymentNotPositive { index } => write!(
+                f,
+                "schedule[{index}].payloadProviderPayment.minimumPayment must be greater than 0 when enabled"
             ),
             Self::ChainIdMismatch { expected, actual } => {
                 write!(f, "chainId {actual} does not match expected {expected}")
@@ -149,6 +165,24 @@ pub fn validate_document(
             });
         }
 
+        let minimum_payment = parse_quantity(&entry.payload_provider_payment.minimum_payment)
+            .ok_or(ValidationFailure::InvalidQuantity {
+                index,
+                field: "payloadProviderPayment.minimumPayment",
+                value: entry.payload_provider_payment.minimum_payment.clone(),
+            })?;
+
+        if entry.payload_provider_payment.provider_share_bps > BPS_DENOMINATOR {
+            return Err(ValidationFailure::PayloadProviderShareBpsTooHigh {
+                index,
+                value: entry.payload_provider_payment.provider_share_bps,
+            });
+        }
+
+        if entry.payload_provider_payment.enabled && minimum_payment == 0 {
+            return Err(ValidationFailure::PayloadProviderMinimumPaymentNotPositive { index });
+        }
+
         let _ = min_base_fee;
     }
 
@@ -167,7 +201,7 @@ pub fn validate_document(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{ScheduleDocument, ScheduleEntry};
+    use crate::model::{PayloadProviderPayment, ScheduleDocument, ScheduleEntry};
 
     fn entry(activation_block: u64) -> ScheduleEntry {
         ScheduleEntry {
@@ -176,6 +210,7 @@ mod tests {
             elasticity_multiplier: 2,
             base_fee_max_change_denominator: 8,
             max_block_gas_limit: "30000000".to_string(),
+            payload_provider_payment: Default::default(),
         }
     }
 
@@ -284,6 +319,19 @@ mod tests {
                 value: "0xzz".to_string()
             })
         );
+
+        let mut minimum_payment_entry = entry(0);
+        minimum_payment_entry
+            .payload_provider_payment
+            .minimum_payment = "wat".to_string();
+        assert_eq!(
+            validate_document(&document(vec![minimum_payment_entry]), None),
+            Err(ValidationFailure::InvalidQuantity {
+                index: 0,
+                field: "payloadProviderPayment.minimumPayment",
+                value: "wat".to_string()
+            })
+        );
     }
 
     #[test]
@@ -304,6 +352,33 @@ mod tests {
                 index: 0,
                 value: 4999
             })
+        );
+    }
+
+    #[test]
+    fn rejects_payload_provider_share_bps_above_denominator() {
+        let mut entry = entry(0);
+        entry.payload_provider_payment.provider_share_bps = 10_001;
+        assert_eq!(
+            validate_document(&document(vec![entry]), None),
+            Err(ValidationFailure::PayloadProviderShareBpsTooHigh {
+                index: 0,
+                value: 10_001
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_enabled_payload_provider_payment_without_minimum() {
+        let mut entry = entry(0);
+        entry.payload_provider_payment = PayloadProviderPayment {
+            enabled: true,
+            provider_share_bps: 7000,
+            minimum_payment: "0".to_string(),
+        };
+        assert_eq!(
+            validate_document(&document(vec![entry]), None),
+            Err(ValidationFailure::PayloadProviderMinimumPaymentNotPositive { index: 0 })
         );
     }
 

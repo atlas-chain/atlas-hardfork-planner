@@ -7,7 +7,12 @@
       "minBaseFeePerGas": "440000000",
       "elasticityMultiplier": 2,
       "baseFeeMaxChangeDenominator": 8,
-      "maxBlockGasLimit": "30000000"
+      "maxBlockGasLimit": "30000000",
+      "payloadProviderPayment": {
+        "enabled": false,
+        "providerShareBps": 0,
+        "minimumPayment": "0"
+      }
     }
   ]
 }

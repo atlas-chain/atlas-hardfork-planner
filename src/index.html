@@ -38,6 +38,7 @@
       .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
       label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.2rem; }
       input { width: 100%; padding: 0.5rem; background: #0d1117; color: var(--text); border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; }
+      input[type="checkbox"] { width: auto; }
       input:focus { outline: none; border-color: var(--accent); }
       button { cursor: pointer; border: 1px solid var(--border); background: var(--accent); color: #0d1117; font-weight: 600; padding: 0.55rem 1rem; border-radius: 6px; }
       button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -56,6 +57,8 @@
       .pill { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.75rem; background: rgba(88,166,255,0.15); color: var(--accent); }
       .locked { opacity: 0.6; }
       .hint { color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem; }
+      .checkline { display: flex; align-items: center; gap: 0.5rem; min-height: 2.4rem; }
+      .checkline label { margin: 0; color: var(--text); }
     </style>
   </head>
   <body>
@@ -74,6 +77,7 @@
               <th>elasticityMultiplier</th>
               <th>baseFeeMaxChangeDenominator</th>
               <th>maxBlockGasLimit</th>
+              <th>payload payment</th>
               <th></th>
             </tr>
           </thead>
@@ -117,6 +121,20 @@
               <label for="maxBlockGasLimit">maxBlockGasLimit</label>
               <input id="maxBlockGasLimit" name="maxBlockGasLimit" placeholder="30000000 or 0x.." required />
             </div>
+            <div>
+              <div class="checkline">
+                <input id="payloadPaymentEnabled" name="payloadPaymentEnabled" type="checkbox" />
+                <label for="payloadPaymentEnabled">payloadProviderPayment.enabled</label>
+              </div>
+            </div>
+            <div>
+              <label for="payloadProviderShareBps">payloadProviderPayment.providerShareBps</label>
+              <input id="payloadProviderShareBps" name="payloadProviderShareBps" type="number" min="0" max="10000" value="0" required />
+            </div>
+            <div>
+              <label for="payloadMinimumPayment">payloadProviderPayment.minimumPayment</label>
+              <input id="payloadMinimumPayment" name="payloadMinimumPayment" placeholder="100000 or 0x.." required />
+            </div>
           </div>
           <div class="actions">
             <button type="submit" id="submitBtn">Add fork</button>
@@ -138,6 +156,9 @@
         "elasticityMultiplier",
         "baseFeeMaxChangeDenominator",
         "maxBlockGasLimit",
+        "payloadPaymentEnabled",
+        "payloadProviderShareBps",
+        "payloadMinimumPayment",
         "bearerKey",
       ];
       const state = { currentBlock: null, lastFork: null, headAdvancedAt: null };
@@ -157,7 +178,10 @@
 
       function saveForm() {
         const data = {};
-        FORM_FIELDS.forEach((id) => { data[id] = $(id).value; });
+        FORM_FIELDS.forEach((id) => {
+          const el = $(id);
+          data[id] = el.type === "checkbox" ? el.checked : el.value;
+        });
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
       }
 
@@ -166,7 +190,9 @@
         try { data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch (_) { return; }
         Object.entries(data).forEach(([id, val]) => {
           const el = $(id);
-          if (el && val != null) el.value = val;
+          if (!el || val == null) return;
+          if (el.type === "checkbox") el.checked = val === true || val === "true";
+          else el.value = val;
         });
       }
 
@@ -215,6 +241,10 @@
           $("elasticityMultiplier").value = state.lastFork.elasticityMultiplier;
           $("baseFeeMaxChangeDenominator").value = state.lastFork.baseFeeMaxChangeDenominator;
           $("maxBlockGasLimit").value = String(state.lastFork.maxBlockGasLimit);
+          const payment = state.lastFork.payloadProviderPayment || {};
+          $("payloadPaymentEnabled").checked = Boolean(payment.enabled);
+          $("payloadProviderShareBps").value = payment.providerShareBps ?? 0;
+          $("payloadMinimumPayment").value = String(payment.minimumPayment ?? "0");
         }
         saveForm();
       }
@@ -255,6 +285,7 @@
               "<td>" + entry.elasticityMultiplier + "</td>" +
               "<td>" + entry.baseFeeMaxChangeDenominator + "</td>" +
               "<td>" + fmtQty(entry.maxBlockGasLimit) + "</td>" +
+              "<td>" + fmtPayloadPayment(entry.payloadProviderPayment) + "</td>" +
               "<td>" + (baseline ? "" :
                 '<button class="danger" data-block="' + entry.activationBlock + '">remove</button>') + "</td>" +
               "</tr>";
@@ -271,6 +302,14 @@
 
       function esc(s) {
         return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      }
+
+      function fmtPayloadPayment(payment) {
+        if (!payment) return '<span class="hint">missing</span>';
+        if (!payment.enabled) return '<span class="hint">disabled</span>';
+        return '<span class="pill">enabled</span>' +
+          '<div class="hint">' + payment.providerShareBps + ' bps provider</div>' +
+          '<div>' + fmtQty(payment.minimumPayment) + ' min</div>';
       }
 
       class HttpError extends Error {
@@ -337,6 +376,11 @@
           elasticityMultiplier: Number($("elasticityMultiplier").value),
           baseFeeMaxChangeDenominator: Number($("baseFeeMaxChangeDenominator").value),
           maxBlockGasLimit: $("maxBlockGasLimit").value.trim(),
+          payloadProviderPayment: {
+            enabled: $("payloadPaymentEnabled").checked,
+            providerShareBps: Number($("payloadProviderShareBps").value),
+            minimumPayment: $("payloadMinimumPayment").value.trim(),
+          },
         };
   try {
     const issues = preflightChecks(body.activationBlock, "planning a fork");
